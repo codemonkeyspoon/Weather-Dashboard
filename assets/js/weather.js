@@ -1,116 +1,229 @@
 
-// OpenWeatherMap API URL and API key
-const apiKey = 'f4776d0e633dc771f25f1eb31a01852f';
+// OpenWeatherMap API URL and API key       
+// This calls the API, just update the url to have your key's name.
+async function fetchKey() {
+const url = 'https://yorkieportunus.herokuapp.com/store/weatherkey'
+const response = await fetch(url);
+const key = await response.json();
+return key;
+}
+    // Call this wherever you need your key.
+    fetchKey().then((key) => {
+        secretKey = key.apiKey;
+});  
+
 
 // Get elements from the DOM
 const searchForm = document.querySelector('#search-form');
 const searchInput = document.querySelector('#city');
-const currentWeather = document.querySelector('#current-weather');
-const forecastWeather = document.querySelector('#forecast');
 const searchHistory = document.querySelector('#search-history');
 
+document.querySelector(`#forecast-title`).style.display = 'none';
+
 // Function to get lat and lon values
-async function fetchGeocodingData(cityName) {
-    const apiUrl = `http://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=1&appid=${apiKey}`;
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    return data[0];
-}
-
-// Function to fetch weather data for a given city
-async function fetchWeatherData(lat, lon) {
-    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    console.log(data)
-    return data;
-}
-
-// Function to display current weather data
-function displayCurrentWeatherData(weatherData) {
-    // Get the relevant elements from the DOM
-    const locationEl = document.querySelector('.location');
-    const temperatureEl = document.querySelector('.temperature');
-    const weatherDescriptionEl = document.querySelector('.weather-description');
-    const weatherIconEl = document.querySelector('.weather-icon');
-
-    // Extract the relevant information from the weather data
-    const location = `${weatherData.name}, ${weatherData.sys.country}`;
-    const temperature = `${Math.round(weatherData.main.temp)}°C`;
-    const weatherDescription = weatherData.weather[0].description;
-    const weatherIcon = `http://openweathermap.org/img/w/${weatherData.weather[0].icon}.png`;
-
-    // Update the DOM with the weather information
-    locationEl.textContent = location;
-    temperatureEl.textContent = temperature;
-    weatherDescriptionEl.textContent = weatherDescription;
-    weatherIconEl.src = weatherIcon;
-}
-
-// Function to display 5-day forecast data
-async function fetchForecastData(lat, lon) {
-    const apiUrl = `https://api.openweathermap.org/data/2.5/forecast/?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    console.log(data)
-    return data;
-}
-
-// Function to display 5-day forecast data
-function displayForecastData(forecastData) {
-    // Get the relevant element from the DOM
-    const forecastEl = document.querySelector('#forecast');
-
-    // Loop through each forecast object and create an HTML element to display it
-    let forecastHtml = '';
-    for (const forecast of forecastData.list) {
-        const date = new Date(forecast.dt * 1000);
-        const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
-        const time = date.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-        const temperature = `${Math.round(forecast.main.temp)}°C`;
-        const weatherIcon = `http://openweathermap.org/img/w/${forecast.weather[0].icon}.png`;
-
-        const forecastItemHtml = `
-        <div class="forecast-item">
-          <div class="day-of-week">${dayOfWeek}</div>
-          <div class="time">${time}</div>
-          <div class="weather-icon"><img src="${weatherIcon}"></div>
-          <div class="temperature">${temperature}</div>
-        </div>
-      `;
-
-        forecastHtml += forecastItemHtml;
+async function getGeoCode(cityName) {
+    fetchKey().then((key) => {
+        secretKey = key.apiKey;
+});
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${secretKey}`);
+    const jsonData = await response.json();
+    const coord = {
+        lat: jsonData.city.coord.lat,
+        lon: jsonData.city.coord.lon
     }
+    return coord;
+}
 
-    // Update the DOM with the forecast information
+// Function to get current weather
+async function getCurrentWeather(lat, lon) {
+    fetchKey().then((key) => {
+        secretKey = key.apiKey;
+});
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${secretKey}`);
+    const weather = await response.json();
+    return weather;
+}
+
+// Function to display current weather
+function displayCurrentWeatherData(weather) {
+    const currentWeatherEl = document.querySelector('.current-weather-display');
+    let date = dayjs.unix(weather.dt).format(`M/D/YYYY`)
+    const currentWeatherHtml = `
+        <div class="current-weather">
+            <h2 class="location">${weather.name} (${date}) <img src="http://openweathermap.org/img/w/${weather.weather[0].icon}.png"></h2>
+            <div class="temperature">Temp: ${Math.round(weather.main.temp)}°C</div>
+            <div class="wind">Wind: ${weather.wind.speed}</div>
+            <div class="humidity">Humidity: ${weather.main.humidity}</div>
+        </div>
+    `;
+    currentWeatherEl.innerHTML = currentWeatherHtml;
+}
+
+// Function to get 5 day forecast
+async function getFiveDayForecast(lat, lon) {
+    fetchKey().then((key) => {
+        secretKey = key.apiKey;
+});
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${secretKey}`)
+    const forecast = await response.json()
+    console.log(forecast);
+    return forecast
+}
+
+// Function to parse forecast data
+function parseForecast(forecastData) {
+    const forecastEl = document.querySelector('.forecast-cards');
+    let forecastHtml = '';
+    let dateArray = [];
+    const currentDate = new Date(); // Get the current date
+    for (const forecast of forecastData.list) {
+        // Skip the current day's forecast
+        const forecastDate = new Date(forecast.dt * 1000); // Convert forecast dt (in seconds) to milliseconds
+        if (forecastDate.getDate() === currentDate.getDate()) {
+            continue;
+        }
+
+        let date = dayjs.unix(forecast.dt).format(`M/D/YYYY`)
+        if (!dateArray.includes(date)) {
+            dateArray.push(date);
+            forecastHtml += `
+                <div class="card card text-bg-primary" style="width: 10rem;">
+                    <h4>${date}</h4>
+                    <div class="card-body">
+                        <div class="card-text">
+                            <img src="http://openweathermap.org/img/w/${forecast.weather[0].icon}.png">
+                            <p>Temp: ${Math.round(forecast.main.temp)}°C</p>
+                            <p>Wind: ${forecast.wind.speed}</p>
+                            <p>Humidity: ${forecast.main.humidity}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    document.querySelector(`#forecast-title`).style.display = 'block';
     forecastEl.innerHTML = forecastHtml;
 }
 
-// Function to add a search history item
+// Function to save search history
+function saveSearchHistory(cityName) {
+    let searchHistoryArray = JSON.parse(localStorage.getItem('searchHistory')) || [];
+    if (!searchHistoryArray.includes(cityName)) {
+        searchHistoryArray.push(cityName);
+        localStorage.setItem('searchHistory', JSON.stringify(searchHistoryArray));
+    }
+}
 
+// Function to display search history
+function displaySearchHistory() {
+    let searchHistoryArray = JSON.parse(localStorage.getItem('searchHistory')) || [];
+    let searchHistoryHtml = '';
+    for (const city of searchHistoryArray) {
+        searchHistoryHtml += `
+        <div class="d-grid gap-2">
+        <button type="button" class="btn btn-secondary">${city}</button>
+        </div>`;
+    }
+    searchHistory.innerHTML = searchHistoryHtml;
+}
 
-// Function to update the search history UI
+// Function to get weather data when a city is clicked from the search history
+async function getWeatherDataFromHistory(e) {
+    const cityName = e.target.textContent;
+    const coord = await getGeoCode(cityName); // Call the getGeoCode function and wait for the response
+    const weather = await getCurrentWeather(coord.lat, coord.lon);
+    displayCurrentWeatherData(weather);
+    // Call the getFiveDayForecast function to get forecast array
+    const forecastArray = await getFiveDayForecast(coord.lat, coord.lon);
+    // Call the parseForecast function to get unique dates from the forecast array
+    parseForecast(forecastArray);
+}
 
+// Event listener for search history
+searchHistory.addEventListener('click', getWeatherDataFromHistory);
 
-// Event listener for form submission
-searchForm.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Prevent the default form submission behavior
+// Call the displaySearchHistory function to display search history
+displaySearchHistory();
 
-    // Get the value of the city input
-    const city = event.target.elements.city.value;
-
-    // Fetch the geocoding data for the city
-    const geocodingData = await fetchGeocodingData(city);
-
-    // Fetch the current weather data for the city
-    const weatherData = await fetchWeatherData(geocodingData.lat, geocodingData.lon);
-
-    // Display the current weather data
-    displayCurrentWeatherData(weatherData);
-
-    // Fetch the forecast data for the city
-    const forecastData = await fetchForecastData(geocodingData.lat, geocodingData.lon);
-
-    // Display the forecast data
-    displayForecastData(forecastData);
+// Event listener for search form
+searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const cityName = searchInput.value;
+    const coord = await getGeoCode(cityName); // Call the getGeoCode function and wait for the response
+    const weather = await getCurrentWeather(coord.lat, coord.lon);
+    displayCurrentWeatherData(weather);
+    // Call the getFiveDayForecast function to get forecast array
+    const forecastArray = await getFiveDayForecast(coord.lat, coord.lon);
+    // Call the parseForecast function to get unique dates from the forecast array
+    parseForecast(forecastArray);
+    saveSearchHistory(cityName);
+    // Call the displaySearchHistory function to display search history
+    displaySearchHistory();
+    searchInput.value = '';
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
