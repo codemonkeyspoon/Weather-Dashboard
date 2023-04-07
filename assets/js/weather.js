@@ -39,7 +39,7 @@ async function getCurrentWeather(lat, lon) {
     fetchKey().then((key) => {
         secretKey = key.apiKey;
 });
-    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${secretKey}`);
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&appid=${secretKey}`);
     const weather = await response.json();
     return weather;
 }
@@ -51,7 +51,7 @@ function displayCurrentWeatherData(weather) {
     const currentWeatherHtml = `
         <div class="current-weather">
             <h2 class="location">${weather.name} (${date}) <img src="http://openweathermap.org/img/w/${weather.weather[0].icon}.png"></h2>
-            <div class="temperature">Temp: ${Math.round(weather.main.temp)}°C</div>
+            <div class="temperature">Temp: ${Math.round(weather.main.temp)}°F</div>
             <div class="wind">Wind: ${weather.wind.speed}</div>
             <div class="humidity">Humidity: ${weather.main.humidity}</div>
         </div>
@@ -64,7 +64,7 @@ async function getFiveDayForecast(lat, lon) {
     fetchKey().then((key) => {
         secretKey = key.apiKey;
 });
-    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${secretKey}`)
+    const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${secretKey}&units=imperial`)
     const forecast = await response.json()
     console.log(forecast);
     return forecast
@@ -92,7 +92,7 @@ function parseForecast(forecastData) {
                     <div class="card-body">
                         <div class="card-text">
                             <img src="http://openweathermap.org/img/w/${forecast.weather[0].icon}.png">
-                            <p>Temp: ${Math.round(forecast.main.temp)}°C</p>
+                            <p>Temp: ${Math.round(forecast.main.temp)}°F</p>
                             <p>Wind: ${forecast.wind.speed}</p>
                             <p>Humidity: ${forecast.main.humidity}</p>
                         </div>
